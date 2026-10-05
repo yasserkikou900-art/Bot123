@@ -1,0 +1,28 @@
+{
+  "name": "discord-bot-ultimate",
+  "version": "1.0.0",
+  "description": "Bot Discord tout-en-un ultra-complet : Modération, Anti-Link, Salons Vocaux (=pv, =mv, =dog), Giveaways animés et Interface stylée",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "ms": "^2.1.3"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "moderation",
+    "voice",
+    "giveaway",
+    "railway"
+  ],
+  "author": "Antigravity",
+  "license": "MIT"
+}
