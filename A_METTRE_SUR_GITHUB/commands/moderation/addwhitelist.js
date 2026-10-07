@@ -26,7 +26,7 @@ module.exports = {
     try {
       const configPath = path.join(__dirname, '../../config.json');
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      
+
       if (!config.whitelist) {
         config.whitelist = [];
       }
