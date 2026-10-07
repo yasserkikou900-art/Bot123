@@ -30,7 +30,6 @@ module.exports = {
               )
             ]
           });
-          // Auto-suppression après 5 secondes pour garder le chat propre
           setTimeout(() => {
             warnMsg.delete().catch(() => {});
           }, 5000);
@@ -45,7 +44,15 @@ module.exports = {
     const prefix = process.env.PREFIX || config.prefix || '=';
     if (!message.content.startsWith(prefix)) return;
 
-    // --- 3. VÉRIFICATION BLACKLIST ---
+    // --- 3. WHITELIST ---
+    const whitelist = Array.isArray(config.whitelist) ? config.whitelist : [];
+    if (!whitelist.includes(message.author.id)) {
+      return message.reply({
+        content: '❌ Vous n\'avez pas la permission d\'utiliser ce bot.'
+      }).catch(() => {});
+    }
+
+    // --- 4. VÉRIFICATION BLACKLIST ---
     if (db.isBlacklisted(message.author.id)) {
       return message.reply({
         content: `❌ Vous êtes placé sur la liste noire (**Blacklist**) et ne pouvez plus exécuter de commandes.`
