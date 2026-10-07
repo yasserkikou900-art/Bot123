@@ -1,5 +1,8 @@
 {
   "prefix": "=",
+  "whitelist": [
+    "754703887738470482"
+  ],
   "colors": {
     "primary": "#5865F2",
     "success": "#00FFA3",
@@ -30,7 +33,7 @@
     "fire": "🔥"
   },
   "rotatingStatuses": [
-    { "name": "Halloween Is coming back baba yaga too", "type": "Watching" }
+    { "name": "les batiments des tarteret", "type": "Watching" }
   ],
   "antiLink": {
     "deleteMessage": true,
