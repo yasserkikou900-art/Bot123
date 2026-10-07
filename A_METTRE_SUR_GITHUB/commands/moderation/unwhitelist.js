@@ -26,32 +26,39 @@ module.exports = {
 
     if (!/^\d{17,20}$/.test(userId)) {
       return message.reply({
-        embeds: [errorEmbed('ID Invalide', 'L'ID doit être un identifiant Discord valide.')]
+        embeds: [errorEmbed('ID Invalide', 'L\'ID doit être un identifiant Discord valide.')]
       });
     }
 
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    const whitelist = Array.isArray(config.whitelist) ? config.whitelist : [];
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const whitelist = Array.isArray(config.whitelist) ? config.whitelist : [];
 
-    if (!whitelist.includes(userId)) {
+      if (!whitelist.includes(userId)) {
+        return message.reply({
+          embeds: [errorEmbed('Non Trouvé', `L\'ID \`${userId}\` n\'est pas dans la whitelist.`)]
+        });
+      }
+
+      const index = whitelist.indexOf(userId);
+      whitelist.splice(index, 1);
+      config.whitelist = whitelist;
+
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
       return message.reply({
-        embeds: [errorEmbed('Non Trouvé', `L'ID \`${userId}\` n'est pas dans la whitelist.`)]
+        embeds: [
+          successEmbed(
+            'Whitelist Mise à Jour ✅',
+            `L\'ID \`${userId}\` a été supprimé de la whitelist.`
+          )
+        ]
+      });
+    } catch (err) {
+      console.error('Erreur unwhitelist:', err);
+      return message.reply({
+        embeds: [errorEmbed('Erreur', 'Impossible de modifier la whitelist.')]
       });
     }
-
-    const index = whitelist.indexOf(userId);
-    whitelist.splice(index, 1);
-    config.whitelist = whitelist;
-
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-
-    return message.reply({
-      embeds: [
-        successEmbed(
-          'Whitelist Mise à Jour ✅',
-          `L'ID \`${userId}\` a été supprimé de la whitelist.`
-        )
-      ]
-    });
   }
 };
