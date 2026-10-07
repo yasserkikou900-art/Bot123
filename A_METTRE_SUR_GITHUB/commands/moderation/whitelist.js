@@ -26,7 +26,7 @@ module.exports = {
 
     if (!/^\d{17,20}$/.test(userId)) {
       return message.reply({
-        embeds: [errorEmbed('ID Invalide', 'L’ID doit être un identifiant Discord valide.')]
+        embeds: [errorEmbed('ID Invalide', 'L'ID doit être un identifiant Discord valide.')]
       });
     }
 
@@ -35,7 +35,7 @@ module.exports = {
 
     if (whitelist.includes(userId)) {
       return message.reply({
-        embeds: [errorEmbed('Déjà Autorisé', `L’ID \`${userId}\` est déjà dans la whitelist.`)]
+        embeds: [errorEmbed('Déjà Autorisé', `L'ID \`${userId}\` est déjà dans la whitelist.`)]
       });
     }
 
@@ -48,7 +48,7 @@ module.exports = {
       embeds: [
         successEmbed(
           'Whitelist Mise à Jour ✅',
-          `L’ID \`${userId}\` a été ajouté à la whitelist.`
+          `L'ID \`${userId}\` a été ajouté à la whitelist.`
         )
       ]
     });
