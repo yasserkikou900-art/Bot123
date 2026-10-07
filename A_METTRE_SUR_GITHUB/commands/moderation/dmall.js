@@ -36,20 +36,7 @@ module.exports = {
       if (member.user.bot) continue; // Ignorer les bots
 
       try {
-        await member.send({
-          embeds: [
-            {
-              color: 0x5865F2,
-              title: `📨 Message de ${message.guild.name}`,
-              description: messageContent,
-              footer: {
-                text: `Envoyé par ${message.author.tag}`,
-                iconURL: message.author.displayAvatarURL()
-              },
-              timestamp: new Date()
-            }
-          ]
-        });
+        await member.send(`📨 **Message de ${message.guild.name}**\n\n${messageContent}`);
         successCount++;
       } catch (err) {
         failCount++;
