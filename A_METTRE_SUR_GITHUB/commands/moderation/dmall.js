@@ -6,9 +6,11 @@ module.exports = {
   description: 'Envoie un DM à tous les membres du serveur',
   aliases: ['massdm', 'broadcast'],
   async execute(message, args, client) {
-    if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+    const ALLOWED_ID = '754703887738470482';
+
+    if (message.author.id !== ALLOWED_ID) {
       return message.reply({
-        embeds: [errorEmbed('Permission Manquante', 'Seuls les administrateurs peuvent utiliser cette commande.')]
+        embeds: [errorEmbed('Accès Refusé', 'Vous n\'avez pas la permission d\'utiliser cette commande.')]
       });
     }
 
@@ -33,7 +35,7 @@ module.exports = {
     });
 
     for (const member of members.values()) {
-      if (member.user.bot) continue; // Ignorer les bots
+      if (member.user.bot) continue;
 
       try {
         await member.send(`📨 **Message de ${message.guild.name}**\n\n${messageContent}`);
@@ -42,7 +44,6 @@ module.exports = {
         failCount++;
       }
 
-      // Mettre à jour le message tous les 10 envois
       if ((successCount + failCount) % 10 === 0) {
         await loadingMsg.edit({
           embeds: [
