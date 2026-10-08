@@ -4,7 +4,7 @@
     "754703887738470482"
   ],
   "axiome": {
-    "apiUrl": "https://api.axiome.trade/market",
+    "apiUrl": "https://axiome.trade",
     "channelId": "1557579809742397542",
     "thresholdPercent": 5,
     "pollIntervalMs": 30000
