@@ -2,6 +2,47 @@ const { ActivityType } = require('discord.js');
 const config = require('../config.json');
 const db = require('../utils/database');
 const { endGiveawayTask } = require('../commands/giveaway/gend');
+const { EmbedBuilder } = require('discord.js');
+
+let lastPrice = null;
+
+async function checkAxiomeAlert(client) {
+  if (!config.axiome || !config.axiome.apiUrl) return;
+
+  try {
+    const res = await fetch(config.axiome.apiUrl);
+    if (!res.ok) return;
+
+    const data = await res.json();
+    const currentPrice = Number(data.price ?? data.currentPrice ?? data.lastPrice ?? 0);
+    if (!currentPrice || !Number.isFinite(currentPrice)) return;
+
+    if (lastPrice !== null) {
+      const percentChange = ((currentPrice - lastPrice) / lastPrice) * 100;
+
+      if (percentChange >= (config.axiome.thresholdPercent || 5)) {
+        const channel = client.channels.cache.get(config.axiome.channelId);
+        if (channel) {
+          const embed = new EmbedBuilder()
+            .setColor('#00FFA3')
+            .setTitle('📈 Bonne action Axiome.trade')
+            .setDescription(`Prix monté de **${percentChange.toFixed(2)}%**`)
+            .addFields(
+              { name: 'Prix actuel', value: `${currentPrice}`, inline: true },
+              { name: 'Prix précédent', value: `${lastPrice}`, inline: true }
+            )
+            .setTimestamp();
+
+          await channel.send({ embeds: [embed] });
+        }
+      }
+    }
+
+    lastPrice = currentPrice;
+  } catch (err) {
+    console.error('Erreur alert Axiome:', err);
+  }
+}
 
 module.exports = {
   name: 'ready',
@@ -48,5 +89,12 @@ module.exports = {
         }
       }
     }, 5000);
+
+    // Alerte Axiome.trade
+    if (config.axiome && config.axiome.apiUrl) {
+      setInterval(() => {
+        checkAxiomeAlert(client);
+      }, config.axiome.pollIntervalMs || 30000);
+    }
   }
 };
