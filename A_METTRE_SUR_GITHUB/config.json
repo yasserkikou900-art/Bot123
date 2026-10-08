@@ -3,6 +3,12 @@
   "whitelist": [
     "754703887738470482"
   ],
+  "axiome": {
+    "apiUrl": "https://api.axiome.trade/market",
+    "channelId": "1557579809742397542",
+    "thresholdPercent": 5,
+    "pollIntervalMs": 30000
+  },
   "colors": {
     "primary": "#5865F2",
     "success": "#00FFA3",
@@ -31,14 +37,5 @@
     "arrow": "➜",
     "sparkles": "✨",
     "fire": "🔥"
-  },
-  "rotatingStatuses": [
-    { "name": "les batiments des tarteret", "type": "Watching" }
-  ],
-  "antiLink": {
-    "deleteMessage": true,
-    "warnUser": true,
-    "ignoredRoles": [],
-    "ignoredChannels": []
   }
 }
