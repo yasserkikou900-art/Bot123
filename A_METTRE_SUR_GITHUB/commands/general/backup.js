@@ -6,7 +6,6 @@ const config = require('../../config.json');
 const OWNER_ID = '754703887738470482';
 const backupDir = path.join(__dirname, '../../backups');
 
-// Créer le dossier backups s'il n'existe pas
 if (!fs.existsSync(backupDir)) {
   fs.mkdirSync(backupDir, { recursive: true });
 }
@@ -29,23 +28,22 @@ module.exports = {
         content: '⏳ Sauvegarde en cours...'
       });
 
-      // Collecter les données
       const backup = {
         guildName: guild.name,
-        guildIcon: guild.iconURL(),
+        guildId: guild.id,
         createdAt: new Date().toISOString(),
         channels: [],
         roles: [],
         members: []
       };
 
-      // 1. Sauvegarder les salons
       for (const channel of guild.channels.cache.values()) {
         backup.channels.push({
+          id: channel.id,
           name: channel.name,
           type: channel.type,
           topic: channel.topic || null,
-          nsfw: channel.nsfw,
+          nsfw: channel.nsfw || false,
           position: channel.position,
           permissionOverwrites: channel.permissionOverwrites.cache.map(po => ({
             id: po.id,
@@ -56,10 +54,10 @@ module.exports = {
         });
       }
 
-      // 2. Sauvegarder les rôles (sauf @everyone)
       for (const role of guild.roles.cache.values()) {
         if (role.name !== '@everyone') {
           backup.roles.push({
+            id: role.id,
             name: role.name,
             color: role.color,
             hoist: role.hoist,
@@ -70,18 +68,17 @@ module.exports = {
         }
       }
 
-      // 3. Sauvegarder les membres (juste les infos basiques)
       for (const member of guild.members.cache.values()) {
         if (!member.user.bot) {
           backup.members.push({
-            username: member.user.username,
             id: member.user.id,
-            roles: member.roles.cache.map(r => r.name)
+            username: member.user.username,
+            discriminator: member.user.discriminator,
+            roles: member.roles.cache.map(r => r.id)
           });
         }
       }
 
-      // Sauvegarder dans un fichier JSON
       const timestamp = Date.now();
       const filename = `backup_${guild.name}_${timestamp}.json`;
       const filepath = path.join(backupDir, filename);
@@ -91,7 +88,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(config.colors.success)
         .setTitle('✅ Backup Complète')
-        .setDescription(`Backup sauvegardée avec succès !`)
+        .setDescription('Backup sauvegardée avec succès !')
         .addFields(
           { name: 'Serveur', value: guild.name, inline: true },
           { name: 'Salons', value: `${backup.channels.length}`, inline: true },
