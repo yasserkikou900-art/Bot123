@@ -27,9 +27,10 @@ module.exports = {
     }
 
     const total = Math.pow(chars.length, length);
-    const delay = 2000; // 2 secondes
+    const delay = 2000;
 
-    const statusMsg = await message.reply(`Snipe lancé...\nLongueur: **\( {length}**\nCharset: ** \){charsetType}**\nTotal: **\( {total}**\nDélai: ** \){delay}ms**`);
+    // Message simple et propre
+    await message.reply(`Snipe lancé (${length} caractères - ${charsetType})`);
 
     function* generateCombinations(len) {
       const max = Math.pow(chars.length, len);
@@ -63,42 +64,29 @@ module.exports = {
           found.push(username);
           console.log(`[FOUND] ${username}`);
 
-          // Envoie sur le webhook
+          // Uniquement le webhook
           await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              content: `🎯 **Username disponible trouvé !**\n\`${username}\`\nLongueur: ${length} | Charset: ${charsetType}`
+              content: `🎯 **Username disponible**\n\`${username}\``
             })
           }).catch(() => {});
-
-          // Message aussi dans le salon
-          await message.channel.send(`🎯 **Trouvé :** \`${username}\``).catch(() => {});
-        }
-
-        if (checked % 20 === 0) {
-          await statusMsg.edit(`Progression: **\( {checked}/ \){total}**\nTrouvés: **\( {found.length}**\nDernier: \` \){username}\``).catch(() => {});
         }
 
         await new Promise(r => setTimeout(r, delay));
 
       } catch (err) {
-        console.log(`Erreur sur ${username}, pause 6s...`);
+        console.log(`Erreur sur ${username}`);
         await new Promise(r => setTimeout(r, 6000));
       }
     }
 
-    const embed = new EmbedBuilder()
-      .setTitle('Snipe terminé')
-      .setColor(found.length > 0 ? 0x57F287 : 0xED4245)
-      .setDescription(found.length > 0
-        ? `**\( {found.length} username(s) trouvé(s) :**\n\`\`\`\n \){found.join('\n')}\n\`\`\``
-        : 'Aucun username disponible trouvé.')
-      .addFields(
-        { name: 'Checkés', value: `${checked}`, inline: true },
-        { name: 'Longueur', value: `${length}`, inline: true }
-      );
-
-    await statusMsg.edit({ content: null, embeds: [embed] }).catch(() => {});
+    // Message final simple
+    if (found.length > 0) {
+      await message.channel.send(`Snipe terminé. **${found.length}** username(s) trouvé(s).`);
+    } else {
+      await message.channel.send(`Snipe terminé. Aucun username trouvé.`);
+    }
   }
 };
