@@ -4,11 +4,8 @@ module.exports = {
   name: 'snipe',
   description: 'Cherche des usernames Discord disponibles',
   async execute(message, args) {
-    // Exemples d'utilisation :
-    // =snipe 3
-    // =snipe 4
-    // =snipe 3 letters
-    // =snipe 4 alphanum
+
+    const WEBHOOK_URL = 'https://discord.com/api/webhooks/1558457244817817722/OEAqCe_oYLauV0DtwtDOK9qU26i2t4XA34sT7B4tMzf1hBlXDXxknTD3iJyMHOvJq3gm';
 
     const length = parseInt(args[0]);
     const charsetType = (args[1] || 'letters').toLowerCase();
@@ -30,7 +27,7 @@ module.exports = {
     }
 
     const total = Math.pow(chars.length, length);
-    const delay = 2000; // 2 secondes entre chaque check
+    const delay = 2000; // 2 secondes
 
     const statusMsg = await message.reply(`Snipe lancé...\nLongueur: **\( {length}**\nCharset: ** \){charsetType}**\nTotal: **\( {total}**\nDélai: ** \){delay}ms**`);
 
@@ -65,6 +62,17 @@ module.exports = {
         if (res.status === 200 && data && data.taken === false) {
           found.push(username);
           console.log(`[FOUND] ${username}`);
+
+          // Envoie sur le webhook
+          await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: `🎯 **Username disponible trouvé !**\n\`${username}\`\nLongueur: ${length} | Charset: ${charsetType}`
+            })
+          }).catch(() => {});
+
+          // Message aussi dans le salon
           await message.channel.send(`🎯 **Trouvé :** \`${username}\``).catch(() => {});
         }
 
