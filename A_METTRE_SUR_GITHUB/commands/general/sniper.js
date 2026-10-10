@@ -1,46 +1,38 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('snipe')
-    .setDescription('Cherche des usernames Discord disponibles (lentement)')
-    .addIntegerOption(opt =>
-      opt.setName('length')
-        .setDescription('Longueur du username (3 ou 4 recommandé)')
-        .setRequired(true)
-        .setMinValue(2)
-        .setMaxValue(5)
-    )
-    .addStringOption(opt =>
-      opt.setName('charset')
-        .setDescription('Type de caractères')
-        .addChoices(
-          { name: 'Lettres seulement (a-z)', value: 'letters' },
-          { name: 'Lettres + chiffres', value: 'alphanum' },
-          { name: 'Lettres + chiffres + _', value: 'full' }
-        )
-        .setRequired(false)
-    ),
+  name: 'snipe',
+  description: 'Cherche des usernames Discord disponibles',
+  async execute(message, args) {
+    // Exemples d'utilisation :
+    // =snipe 3
+    // =snipe 4
+    // =snipe 3 letters
+    // =snipe 4 alphanum
 
-  async execute(interaction) {
-    const length = interaction.options.getInteger('length');
-    const charsetType = interaction.options.getString('charset') || 'letters';
+    const length = parseInt(args[0]);
+    const charsetType = (args[1] || 'letters').toLowerCase();
 
-    if (length >= 5 && charsetType !== 'letters') {
-      return interaction.reply({
-        content: 'Trop de combinaisons. Pour 5 caractères utilise seulement `letters`.',
-        ephemeral: true
-      });
+    if (!length || length < 2 || length > 5) {
+      return message.reply('Utilisation : `=snipe <longueur> [letters/alphanum/full]`\nExemple : `=snipe 3` ou `=snipe 4 letters`');
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    if (length >= 5 && charsetType !== 'letters') {
+      return message.reply('Trop de combinaisons. Pour 5 caractères utilise seulement `letters`.');
+    }
 
     let chars = '';
     if (charsetType === 'letters') chars = 'abcdefghijklmnopqrstuvwxyz';
     else if (charsetType === 'alphanum') chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    else chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
+    else if (charsetType === 'full') chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
+    else {
+      return message.reply('Charset invalide. Utilise : `letters`, `alphanum` ou `full`');
+    }
 
     const total = Math.pow(chars.length, length);
+    const delay = 2000; // 2 secondes entre chaque check
+
+    const statusMsg = await message.reply(`Snipe lancé...\nLongueur: **\( {length}**\nCharset: ** \){charsetType}**\nTotal: **\( {total}**\nDélai: ** \){delay}ms**`);
 
     function* generateCombinations(len) {
       const max = Math.pow(chars.length, len);
@@ -57,11 +49,6 @@ module.exports = {
 
     const found = [];
     let checked = 0;
-    const delay = 2000; // 2 secondes = très safe
-
-    await interaction.editReply({
-      content: `Snipe lancé...\nLongueur: **\( {length}**\nCharset: ** \){charsetType}**\nTotal: **\( {total}**\nDélai: ** \){delay}ms**`
-    });
 
     for (const username of generateCombinations(length)) {
       try {
@@ -78,17 +65,11 @@ module.exports = {
         if (res.status === 200 && data && data.taken === false) {
           found.push(username);
           console.log(`[FOUND] ${username}`);
-
-          await interaction.followUp({
-            content: `🎯 **Trouvé :** \`${username}\``,
-            ephemeral: true
-          }).catch(() => {});
+          await message.channel.send(`🎯 **Trouvé :** \`${username}\``).catch(() => {});
         }
 
         if (checked % 20 === 0) {
-          await interaction.editReply({
-            content: `Progression: **\( {checked}/ \){total}**\nTrouvés: **\( {found.length}**\nDernier: \` \){username}\``
-          }).catch(() => {});
+          await statusMsg.edit(`Progression: **\( {checked}/ \){total}**\nTrouvés: **\( {found.length}**\nDernier: \` \){username}\``).catch(() => {});
         }
 
         await new Promise(r => setTimeout(r, delay));
@@ -110,6 +91,6 @@ module.exports = {
         { name: 'Longueur', value: `${length}`, inline: true }
       );
 
-    await interaction.editReply({ content: null, embeds: [embed] }).catch(() => {});
+    await statusMsg.edit({ content: null, embeds: [embed] }).catch(() => {});
   }
 };
