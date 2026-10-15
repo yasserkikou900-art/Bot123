@@ -38,7 +38,7 @@ client.on('messageCreate', async (message) => {
 
   // On crée le nouveau salon d'abord
   const general = await guild.channels.create({
-    name: 'général',
+    name: 'kanay',
     type: ChannelType.GuildText,
   });
 
