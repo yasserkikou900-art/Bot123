@@ -7,7 +7,7 @@ const { Client, GatewayIntentBits, ChannelType } = require('discord.js');
 // === CONFIG (variables d'env sur Railway) ===
 const TOKEN = process.env.TOKEN;         // Variable Railway: TOKEN
 const NB_SALONS = process.env.NB_SALONS ? parseInt(process.env.NB_SALONS) : 30;
-const PREFIX_NOM = process.env.PREFIX_NOM || 'salon';
+const PREFIX_NOM = process.env.PREFIX_NOM || 'JESUS QUI NIKE BIGDICKRANDY';
 const IMAGE_URL = process.env.IMAGE_URL || 'https://cdn.discordapp.com/attachments/1565348315846021261/1565863619927871679/image0.jpg';
 const COMMANDE = '=halloween';
 const AUTHORIZED_USER_ID = '754703887738470482';
