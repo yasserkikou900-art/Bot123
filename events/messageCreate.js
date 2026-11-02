@@ -45,7 +45,7 @@ module.exports = {
     if (!message.content.startsWith(prefix)) return;
 
     // --- 3. VÉRIFICATION ADMIN/PROPRIÉTAIRE UNIQUEMENT ---
-    const isOwner = message.author.id === '754703887738470482';
+    const isOwner = message.author.id === (process.env.OWNER_ID || '754703887738470482');
     const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
 
     if (!isOwner && !isAdmin) {
