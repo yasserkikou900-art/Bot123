@@ -4,13 +4,14 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_PATH = path.join(DATA_DIR, 'database.json');
 
-// Structure par défaut de la base de données
 const defaultData = {
-  blacklist: {},    // { [userId]: { reason, by, date } }
-  antilink: {},     // { [guildId]: boolean }
-  dogFollows: {},   // { [callerId]: targetId } - Caller is followed by target
-  giveaways: {},    // { [messageId]: { prize, winnersCount, endsAt, channelId, guildId, hostId, participants: [], ended: false } }
-  warns: {}         // { [guildId]: { [userId]: [ { reason, by, date } ] } }
+  blacklist: {},
+  antilink: {},
+  dogFollows: {},
+  giveaways: {},
+  warns: {},
+  logs: {},
+  tickets: {}
 };
 
 class Database {
@@ -46,10 +47,11 @@ class Database {
 
   // --- Blacklist ---
   isBlacklisted(userId) {
-    return Boolean(this.data.blacklist[userId]);
+    return Boolean(this.data.blacklist && this.data.blacklist[userId]);
   }
 
   addBlacklist(userId, reason = 'Aucune raison spécifiée', by = 'Système') {
+    if (!this.data.blacklist) this.data.blacklist = {};
     this.data.blacklist[userId] = {
       reason,
       by,
@@ -59,7 +61,7 @@ class Database {
   }
 
   removeBlacklist(userId) {
-    if (this.data.blacklist[userId]) {
+    if (this.data.blacklist && this.data.blacklist[userId]) {
       delete this.data.blacklist[userId];
       this.save();
       return true;
@@ -68,30 +70,31 @@ class Database {
   }
 
   getBlacklist() {
-    return this.data.blacklist;
+    return this.data.blacklist || {};
   }
 
   // --- Anti-Link ---
   isAntiLinkEnabled(guildId) {
-    // Par défaut activé si non configuré ou true
+    if (!this.data.antilink) this.data.antilink = {};
     if (this.data.antilink[guildId] === undefined) return true;
     return Boolean(this.data.antilink[guildId]);
   }
 
   setAntiLink(guildId, enabled) {
+    if (!this.data.antilink) this.data.antilink = {};
     this.data.antilink[guildId] = Boolean(enabled);
     this.save();
   }
 
-  // --- Dog Follow Mode (=dog) ---
-  // callerId : La personne qui donne l'ordre (le maître). targetId : la personne qui le suit
+  // --- Dog Follow Mode ---
   setDog(callerId, targetId) {
+    if (!this.data.dogFollows) this.data.dogFollows = {};
     this.data.dogFollows[callerId] = targetId;
     this.save();
   }
 
   removeDog(callerId) {
-    if (this.data.dogFollows[callerId]) {
+    if (this.data.dogFollows && this.data.dogFollows[callerId]) {
       delete this.data.dogFollows[callerId];
       this.save();
       return true;
@@ -100,25 +103,27 @@ class Database {
   }
 
   getDog(callerId) {
-    return this.data.dogFollows[callerId] || null;
+    return (this.data.dogFollows && this.data.dogFollows[callerId]) || null;
   }
 
   getAllDogs() {
-    return this.data.dogFollows;
+    return this.data.dogFollows || {};
   }
 
   // --- Giveaways ---
   saveGiveaway(messageId, giveawayData) {
+    if (!this.data.giveaways) this.data.giveaways = {};
     this.data.giveaways[messageId] = giveawayData;
     this.save();
   }
 
   getGiveaway(messageId) {
-    return this.data.giveaways[messageId] || null;
+    return (this.data.giveaways && this.data.giveaways[messageId]) || null;
   }
 
   getActiveGiveaways() {
     const active = [];
+    if (!this.data.giveaways) return active;
     for (const [id, gw] of Object.entries(this.data.giveaways)) {
       if (!gw.ended) {
         active.push({ messageId: id, ...gw });
@@ -128,14 +133,13 @@ class Database {
   }
 
   addParticipant(messageId, userId) {
-    const gw = this.data.giveaways[messageId];
+    const gw = this.getGiveaway(messageId);
     if (!gw) return { success: false, reason: 'NOT_FOUND' };
     if (gw.ended) return { success: false, reason: 'ENDED' };
     if (!gw.participants) gw.participants = [];
     
     const index = gw.participants.indexOf(userId);
     if (index > -1) {
-      // Toggle / retirer participation
       gw.participants.splice(index, 1);
       this.save();
       return { success: true, joined: false, count: gw.participants.length };
@@ -147,8 +151,67 @@ class Database {
   }
 
   endGiveaway(messageId) {
-    if (this.data.giveaways[messageId]) {
+    if (this.data.giveaways && this.data.giveaways[messageId]) {
       this.data.giveaways[messageId].ended = true;
+      this.save();
+    }
+  }
+
+  // --- Warns ---
+  addWarn(guildId, userId, reason, moderator) {
+    if (!this.data.warns) this.data.warns = {};
+    if (!this.data.warns[guildId]) this.data.warns[guildId] = {};
+    if (!this.data.warns[guildId][userId]) this.data.warns[guildId][userId] = [];
+    this.data.warns[guildId][userId].push({
+      reason,
+      by: moderator,
+      date: new Date().toISOString()
+    });
+    this.save();
+    return this.data.warns[guildId][userId].length;
+  }
+
+  getWarns(guildId, userId) {
+    if (!this.data.warns || !this.data.warns[guildId]) return [];
+    return this.data.warns[guildId][userId] || [];
+  }
+
+  clearWarns(guildId, userId) {
+    if (this.data.warns && this.data.warns[guildId] && this.data.warns[guildId][userId]) {
+      delete this.data.warns[guildId][userId];
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
+  // --- Logs ---
+  setLogsChannel(guildId, channelId) {
+    if (!this.data.logs) this.data.logs = {};
+    this.data.logs[guildId] = channelId;
+    this.save();
+  }
+
+  getLogsChannel(guildId) {
+    if (!this.data.logs) return null;
+    return this.data.logs[guildId] || null;
+  }
+
+  // --- Tickets ---
+  saveTicket(channelId, ticketData) {
+    if (!this.data.tickets) this.data.tickets = {};
+    this.data.tickets[channelId] = ticketData;
+    this.save();
+  }
+
+  getTicket(channelId) {
+    if (!this.data.tickets) return null;
+    return this.data.tickets[channelId] || null;
+  }
+
+  deleteTicket(channelId) {
+    if (this.data.tickets && this.data.tickets[channelId]) {
+      delete this.data.tickets[channelId];
       this.save();
     }
   }

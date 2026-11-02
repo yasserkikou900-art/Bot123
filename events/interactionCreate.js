@@ -1,15 +1,16 @@
 const db = require('../utils/database');
 const { giveawayEmbed, successEmbed, errorEmbed, createEmbed } = require('../utils/embeds');
 const config = require('../config.json');
+const { ChannelType, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
-    // Gestion des Boutons
+    // --- GESTION DES BOUTONS ---
     if (interaction.isButton()) {
       const customId = interaction.customId;
 
-      // Bouton de participation Giveaway : giveaway_join_<messageId>
+      // 1. Bouton Giveaway
       if (customId.startsWith('giveaway_join_')) {
         const messageId = customId.replace('giveaway_join_', '');
         const gw = db.getGiveaway(messageId);
@@ -29,7 +30,6 @@ module.exports = {
           });
         }
 
-        // Mettre à jour l'embed avec le nouveau compteur
         try {
           const updatedEmbed = giveawayEmbed({
             prize: gw.prize,
@@ -39,116 +39,243 @@ module.exports = {
             participantsCount: result.count
           });
 
-          await interaction.message.edit({
-            embeds: [updatedEmbed]
-          });
+          await interaction.message.edit({ embeds: [updatedEmbed] });
         } catch (err) {
-          console.error('Erreur mise à jour message giveaway:', err);
+          console.error('Erreur mise à jour giveaway:', err);
         }
 
         if (result.joined) {
           return interaction.reply({
-            embeds: [
-              successEmbed(
-                'Participation Confirmée ! 🎉',
-                `Bonne chance **${interaction.user.username}** ! Votre participation pour **${gw.prize}** a bien été validée.\n*(Recliquez sur le bouton si vous souhaitez vous retirer)*`
-              )
-            ],
+            embeds: [successEmbed('Participation Confirmée ! 🎉', `Bonne chance **${interaction.user.username}** ! Votre participation pour **${gw.prize}** a été enregistrée.`)],
             ephemeral: true
           });
         } else {
           return interaction.reply({
-            embeds: [
-              createEmbed({
-                title: 'Participation Retirée',
-                description: `> Vous ne participez plus au concours pour **${gw.prize}**.`,
-                color: config.colors.warning
-              })
-            ],
+            embeds: [createEmbed({
+              title: 'Participation Retirée',
+              description: `> Vous ne participez plus au concours pour **${gw.prize}**.`,
+              color: config.colors.warning
+            })],
             ephemeral: true
           });
         }
       }
+
+      // 2. Bouton Création de Ticket
+      if (customId === 'ticket_create') {
+        const existingTicket = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.username.toLowerCase()}`);
+        if (existingTicket) {
+          return interaction.reply({
+            content: `❌ Vous avez déjà un ticket ouvert dans ${existingTicket} !`,
+            ephemeral: true
+          });
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+          const ticketChannel = await interaction.guild.channels.create({
+            name: `ticket-${interaction.user.username}`,
+            type: ChannelType.GuildText,
+            permissionOverwrites: [
+              {
+                id: interaction.guild.roles.everyone,
+                deny: [PermissionFlagsBits.ViewChannel]
+              },
+              {
+                id: interaction.user.id,
+                allow: [
+                  PermissionFlagsBits.ViewChannel,
+                  PermissionFlagsBits.SendMessages,
+                  PermissionFlagsBits.ReadMessageHistory,
+                  PermissionFlagsBits.AttachFiles
+                ]
+              },
+              {
+                id: client.user.id,
+                allow: [
+                  PermissionFlagsBits.ViewChannel,
+                  PermissionFlagsBits.SendMessages,
+                  PermissionFlagsBits.ManageChannels
+                ]
+              }
+            ]
+          });
+
+          db.saveTicket(ticketChannel.id, {
+            userId: interaction.user.id,
+            guildId: interaction.guild.id,
+            createdAt: Date.now()
+          });
+
+          const welcomeEmbed = createEmbed({
+            title: `🎫 Ticket Ouvert - ${interaction.user.username}`,
+            description: [
+              `Bonjour ${interaction.user}, bienvenue dans votre salon d'assistance !`,
+              `L'équipe du staff a été notifiée et va prendre en charge votre demande.`,
+              '',
+              `Pour fermer ce salon, utilisez le bouton **Fermer** ci-dessous.`
+            ].join('\n'),
+            color: config.colors.primary
+          });
+
+          const buttonsRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId('ticket_close')
+              .setLabel('Fermer le Ticket')
+              .setStyle(ButtonStyle.Danger)
+              .setEmoji('🔒'),
+            new ButtonBuilder()
+              .setCustomId('ticket_delete')
+              .setLabel('Supprimer')
+              .setStyle(ButtonStyle.Secondary)
+              .setEmoji('🗑️')
+          );
+
+          await ticketChannel.send({
+            content: `${interaction.user} | Staff`,
+            embeds: [welcomeEmbed],
+            components: [buttonsRow]
+          });
+
+          return interaction.editReply({
+            content: `✅ Votre ticket a été créé avec succès : ${ticketChannel}`
+          });
+        } catch (err) {
+          console.error('Erreur création ticket:', err);
+          return interaction.editReply({
+            content: '❌ Une erreur est survenue lors de la création du salon de ticket.'
+          });
+        }
+      }
+
+      // 3. Bouton Fermeture de Ticket
+      if (customId === 'ticket_close') {
+        const ticketInfo = db.getTicket(interaction.channel.id);
+        if (ticketInfo && ticketInfo.userId) {
+          await interaction.channel.permissionOverwrites.edit(ticketInfo.userId, {
+            SendMessages: false
+          }).catch(() => {});
+        }
+
+        await interaction.reply({
+          embeds: [createEmbed({
+            title: '🔒 Ticket Verrouillé',
+            description: `Ce ticket a été fermé par ${interaction.user}. Vous pouvez maintenant le supprimer avec le bouton ci-dessous.`,
+            color: config.colors.warning
+          })]
+        });
+      }
+
+      // 4. Bouton Suppression de Ticket
+      if (customId === 'ticket_delete') {
+        await interaction.reply({
+          embeds: [createEmbed({
+            title: '🗑️ Suppression en cours...',
+            description: 'Ce salon sera supprimé définitivement dans 5 secondes.',
+            color: config.colors.danger
+          })]
+        });
+        db.deleteTicket(interaction.channel.id);
+        setTimeout(() => {
+          interaction.channel.delete().catch(() => {});
+        }, 5000);
+      }
     }
 
-    // Gestion des Menus de Sélection (ex: Menu =help)
+    // --- GESTION DU MENU DÉROULANT HELP ---
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === 'help_category_select') {
         const selected = interaction.values[0];
-        const prefix = process.env.PREFIX || config.prefix;
+        const prefix = process.env.PREFIX || config.prefix || '=';
 
         let categoryEmbed;
 
         switch (selected) {
           case 'mod':
             categoryEmbed = createEmbed({
-              title: `${config.emojis.shield} Système de Modération`,
-              description: `Voici la liste des commandes administratives et de sanction :`,
+              title: `${config.emojis.shield} Modération & Sanctions`,
+              description: 'Commandes de modération et de gestion des membres :',
               color: config.colors.danger,
               fields: [
-                { name: `\`${prefix}ban <@user/ID> [raison]\``, value: `Bannit définitivement un utilisateur du serveur.` },
-                { name: `\`${prefix}kick <@user/ID> [raison]\``, value: `Expulse un membre du serveur.` },
-                { name: `\`${prefix}mute <@user/ID> <temps> [raison]\``, value: `Exécute un tempmute (timeout Discord) : ex. \`${prefix}mute @user 10m Pub\`` },
-                { name: `\`${prefix}unmute <@user/ID>\``, value: `Retire le timeout / mute d'un membre.` },
-                { name: `\`${prefix}bl <add/remove/list> <@user/ID> [raison]\``, value: `Système de Blacklist complète du bot et du serveur.` },
-                { name: `\`${prefix}clear <nombre (1-100)>\``, value: `Supprime rapidement un nombre de messages dans le salon.` }
+                { name: `\`${prefix}ban <@user/ID> [raison]\``, value: 'Bannit définitivement un utilisateur.' },
+                { name: `\`${prefix}unban <ID>\``, value: 'Débannit un utilisateur avec son identifiant.' },
+                { name: `\`${prefix}kick <@user/ID> [raison]\``, value: 'Expulse un membre du serveur.' },
+                { name: `\`${prefix}mute <@user> <temps> [raison]\``, value: 'Timeout Discord (ex: 10m, 2h, 1d).' },
+                { name: `\`${prefix}unmute <@user>\``, value: 'Retire le timeout d\'un membre.' },
+                { name: `\`${prefix}warn <@user> [raison]\``, value: 'Attribue un avertissement.' },
+                { name: `\`${prefix}warns [@user]\``, value: 'Affiche la liste des avertissements.' },
+                { name: `\`${prefix}clearwarns <@user>\``, value: 'Efface tous les avertissements.' },
+                { name: `\`${prefix}lock [#salon]\``, value: 'Verrouille un salon textuel pour @everyone.' },
+                { name: `\`${prefix}unlock [#salon]\``, value: 'Déverrouille un salon textuel.' },
+                { name: `\`${prefix}clear <1-100>\``, value: 'Supprime un nombre précis de messages.' }
+              ]
+            });
+            break;
+
+          case 'tickets':
+            categoryEmbed = createEmbed({
+              title: '🎫 Système de Tickets',
+              description: 'Outils de gestion d\'assistance et tickets privés :',
+              color: config.colors.primary,
+              fields: [
+                { name: `\`${prefix}ticket-setup\``, value: 'Poste le panneau avec bouton pour que les membres ouvrent un ticket.' },
+                { name: `\`${prefix}ticket close\``, value: 'Ferme et supprime le ticket actuel.' },
+                { name: `\`${prefix}ticket add <@user>\``, value: 'Ajoute un utilisateur au ticket actuel.' },
+                { name: `\`${prefix}ticket remove <@user>\``, value: 'Retire un utilisateur du ticket actuel.' }
+              ]
+            });
+            break;
+
+          case 'logs':
+            categoryEmbed = createEmbed({
+              title: '📜 Système de Logs Automatique',
+              description: 'Surveillance et traçabilité en direct du serveur :',
+              color: config.colors.info,
+              fields: [
+                { name: `\`${prefix}setlogs <#salon>\``, value: 'Configure le salon où seront envoyés tous les logs.' },
+                { name: `\`${prefix}setlogs off\``, value: 'Désactive le système de logs.' },
+                { name: 'Événements surveillés', value: '• Messages supprimés et modifiés\n• Arrivée et départ de membres\n• Création et suppression de salons\n• Création et suppression de rôles' }
               ]
             });
             break;
 
           case 'voice':
             categoryEmbed = createEmbed({
-              title: `${config.emojis.voice} Salons Vocaux & Rôles VIP`,
-              description: `Commandes avancées de gestion et d'interaction vocale :`,
+              title: '🎙️ Salons Vocaux VIP',
+              description: 'Commandes vocales avancées :',
               color: config.colors.voice,
               fields: [
-                { name: `\`${prefix}pv\``, value: `Verrouille instantanément votre salon vocal actuel aux autres membres (privé). Tapez à nouveau pour déverrouiller.` },
-                { name: `\`${prefix}mv <@user/ID>\``, value: `Téléporte et déplace immédiatement un utilisateur dans votre salon vocal.` },
-                { name: `\`${prefix}dog <@user/ID>\``, value: `Active/Désactive le **mode Dog** ! La cible vous suit automatiquement à chaque changement de salon vocal !` }
+                { name: `\`${prefix}pv\``, value: 'Rend votre salon vocal actuel privé ou public.' },
+                { name: `\`${prefix}mv <@user/ID>\``, value: 'Téléporte instantanément un membre dans votre salon vocal.' },
+                { name: `\`${prefix}dog <@user/ID>\``, value: 'Mode chien de garde : la cible vous suit dans tous vos salons.' }
               ]
             });
             break;
 
           case 'giveaway':
             categoryEmbed = createEmbed({
-              title: `${config.emojis.giveaway} Système de Giveaways & Concours`,
-              description: `Gérez des tirages au sort avec boutons interactifs et animations en temps réel :`,
+              title: '🎉 Giveaways & Concours',
+              description: 'Organisation de concours interactifs :',
               color: config.colors.giveaway,
               fields: [
-                { name: `\`${prefix}gcreate <durée> <gagnants> <lot>\``, value: `Lance un concours stylé avec bouton 🎉.\n*Exemple :* \`${prefix}gcreate 30m 1 Nitro Boost\`` },
-                { name: `\`${prefix}greroll <ID_Message>\``, value: `Retire un nouveau gagnant au sort pour un concours terminé.` },
-                { name: `\`${prefix}gend <ID_Message>\``, value: `Termine immédiatement un concours en cours et tire les gagnants.` }
+                { name: `\`${prefix}gcreate <durée> <gagnants> <lot>\``, value: 'Crée un giveaway avec bouton interactif.' },
+                { name: `\`${prefix}gend <ID_message>\``, value: 'Termine immédiatement un concours en cours.' },
+                { name: `\`${prefix}greroll <ID_message>\``, value: 'Tire un nouveau gagnant.' }
               ]
             });
             break;
 
-          case 'security':
-            categoryEmbed = createEmbed({
-              title: `${config.emojis.link} Sécurité & Anti-Link Automatique`,
-              description: `Protection anti-liens et surveillance en temps réel :`,
-              color: config.colors.warning,
-              fields: [
-                { name: `\`${prefix}antilink <on/off/status>\``, value: `Active ou désactive la suppression automatique des liens d'invitation Discord et URL non autorisées.` },
-                { name: `\`Permissions Bypass\``, value: `Les Administrateurs et Modérateurs autorisés ignorent les filtres de sécurité.` }
-              ]
-            });
-            break;
-
-          case 'general':
           default:
             categoryEmbed = createEmbed({
-              title: `${config.emojis.sparkles} Informations Générales & Utilitaires`,
-              description: `Commandes basiques et statut du système :`,
-              color: config.colors.primary,
-              fields: [
-                { name: `\`${prefix}help\``, value: `Affiche le panneau d'aide interactif avec menu déroulant.` },
-                { name: `\`${prefix}ping\``, value: `Affiche la latence de l'API Discord et du serveur.` }
-              ]
+              title: '⚡ Panneau de Contrôle Principal',
+              description: `Utilisez le menu déroulant ci-dessous pour afficher les détails de chaque module.`,
+              color: config.colors.primary
             });
             break;
         }
 
-        await interaction.update({
+        return interaction.update({
           embeds: [categoryEmbed]
         });
       }
